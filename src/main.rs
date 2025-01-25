@@ -1,7 +1,9 @@
 use polars::prelude::*;
 use serde::Deserialize;
 use futures::future;
+use dotenv::dotenv;
 use std::{
+  env,
   error::Error,
   io::Cursor,
 };
@@ -14,10 +16,12 @@ struct FileInfo {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-  let url = "https://api.github.com/repos/JFKongphop/running-analysis/contents/running";
+  dotenv().ok();
+  let folder = env::var("FOLDER").unwrap();
+  let github_repo = format!("https://api.github.com/repos/{}", folder);
 
   let resp = reqwest::Client::new()
-    .get(url)
+    .get(&github_repo)
     .header("User-Agent", "github")
     .send()
     .await?
@@ -28,8 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .into_iter()
     .map(|file: FileInfo| file.download_url)
     .collect();
-
-  println!("{:#?}", csv_links);
 
   let tasks: Vec<_> = csv_links.into_iter().map(|link| {
     tokio::spawn(async move {
