@@ -1,63 +1,16 @@
-// use polars::prelude::*;
-// use std::collections::HashMap;
-// use std::io::Cursor;
+use polars::prelude::*;
 use serde::Deserialize;
-use std::error::Error;
+use futures::future;
+use std::{
+  error::Error,
+  io::Cursor,
+};
 
-// Define the FileInfo struct to match the JSON structure
+
 #[derive(Deserialize, Debug)]
 struct FileInfo {
-  // name: String,
-  // path: String,
-  // sha: String,
-  // size: u64,
-  // url: String,
-  // html_url: String,
-  // git_url: String,
   download_url: String,
-  // #[serde(rename = "type")]
-  // file_type: String,
-  // _links: Links,
 }
-
-// #[derive(Deserialize, Debug)]
-// struct Links {
-//   #[serde(rename = "self")]
-//   self_url: String,
-//   git: String,
-//   html: String,
-// }
-
-// #[tokio::main]
-// async fn main() -> Result<(), Box<dyn Error>> {
-//   let url = "https://api.github.com/repos/JFKongphop/running-analysis/contents/running";
-//   let resp = reqwest::Client::new().get(url).header("User-Agent", "reqwest").send().await?.text().await?;
-  
-
-
-//   // let url = "https://raw.githubusercontent.com/JFKongphop/running-analysis/main/running/01-oct-2023.csv";
-
-//   // let resp = reqwest::get(url)
-//   //   .await?.text().await?;
-//   //   // .json::<HashMap<String, String>>()
-//   //   // .await?;
-//   // println!("{:#?}", resp);
-
-//   // let data_bytes = resp.as_bytes();
-
-//   // let cursor = Cursor::new(data_bytes);
-  
-
-//   // // Use Polars' CsvReader to read the data without explicitly inferring the schema
-//   // let df = CsvReader::new(cursor).
-//   //     finish()?; // Automatically infer schema during reading
-
-//   // // Print the DataFrame
-//   // println!("{:?}", df);
-
-//   // Ok(())
-// }
-
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -71,14 +24,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .json::<Vec<FileInfo>>()
     .await?;
 
-  let csv_files: Vec<String> = resp
+  let csv_links: Vec<String> = resp
     .into_iter()
-    .map(|file| {
-      file.download_url
-    })
+    .map(|file: FileInfo| file.download_url)
     .collect();
 
-  println!("{:?}", csv_files);
+  println!("{:#?}", csv_links);
+
+  let tasks: Vec<_> = csv_links.into_iter().map(|link| {
+    tokio::spawn(async move {
+      match reqwest::get(&link).await {
+        Ok(response) => {
+          match response.text().await {
+            Ok(text) => {
+              let data_bytes = text.as_bytes();
+              let cursor = Cursor::new(data_bytes);
+
+              match CsvReader::new(cursor).finish() {
+                Ok(df) => println!("{:?}", df),
+                Err(e) => eprintln!("Error reading CSV from {}: {}", link, e),
+              }
+            }
+            Err(e) => eprintln!("Error fetching CSV from {}: {}", link, e),
+          }
+        }
+        Err(e) => eprintln!("Error downloading from {}: {}", link, e),
+      }
+    })
+  }).collect();
+
+  let _ = future::join_all(tasks).await;
 
   Ok(())
 }
