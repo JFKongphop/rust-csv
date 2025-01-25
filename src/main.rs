@@ -53,7 +53,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     })
   }).collect();
 
-  let _ = future::join_all(tasks).await;
+  future::join_all(tasks).await;
 
   Ok(())
 }
