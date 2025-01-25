@@ -61,25 +61,24 @@ struct FileInfo {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // GitHub API URL
-    let url = "https://api.github.com/repos/JFKongphop/running-analysis/contents/running";
+  let url = "https://api.github.com/repos/JFKongphop/running-analysis/contents/running";
 
-    // Make the HTTP GET request using reqwest
-    let resp = reqwest::Client::new()
-        .get(url)
-        .header("User-Agent", "reqwest") // GitHub API requires a User-Agent header
-        .send()
-        .await?
-        .json::<Vec<FileInfo>>() // Deserialize into Vec<FileInfo>
-        .await?;
+  let resp = reqwest::Client::new()
+    .get(url)
+    .header("User-Agent", "github")
+    .send()
+    .await?
+    .json::<Vec<FileInfo>>()
+    .await?;
 
-    // Print the deserialized response
-    println!("{:#?}", resp);
+  let csv_files: Vec<String> = resp
+    .into_iter()
+    .map(|file| {
+      file.download_url
+    })
+    .collect();
 
-    // Example: Access individual file info
-    for file in &resp {
-        println!("File: {}", file.download_url);
-    }
+  println!("{:?}", csv_files);
 
-    Ok(())
+  Ok(())
 }
