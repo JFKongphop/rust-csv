@@ -34,48 +34,48 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .map(|file: FileInfo| file.download_url)
     .collect();
 
-    let csv_data: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+  let csv_data: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
 
-      let tasks: Vec<_> = csv_links.into_iter().map(|link| {
-          let csv_data = Arc::clone(&csv_data);
-          tokio::spawn(async move {
-              match reqwest::get(&link).await {
-                  Ok(response) => {
-                      match response.text().await {
-                          Ok(text) => {
-                              let data = &text[500..];
-                              let cleaned_data: String = data
-                              .lines()
-                              .skip(1)
-                              .collect::<Vec<&str>>()
-                              .join("\n");
-                              println!("{}\n", cleaned_data.trim());
-  
-                              let mut csv_data = csv_data.lock().await; // Acquire lock
-                              csv_data.push(data.trim().to_string()); // Push trimmed data into shared vector
-  
-                              let data_bytes = text.as_bytes();
-                              let cursor = Cursor::new(data_bytes);
-  
-                              match CsvReader::new(cursor).finish() {
-                                  Ok(df) => {
-                                      // println!("{:?}", df); // Placeholder for handling parsed DataFrame
-                                  }
-                                  Err(e) => eprintln!("Error reading CSV from {}: {}", link, e),
-                              }
-                          }
-                          Err(e) => eprintln!("Error fetching CSV from {}: {}", link, e),
-                      }
-                  }
-                  Err(e) => eprintln!("Error downloading from {}: {}", link, e),
+  let tasks: Vec<_> = csv_links.into_iter().map(|link| {
+    let csv_data = Arc::clone(&csv_data);
+    tokio::spawn(async move {
+      match reqwest::get(&link).await {
+        Ok(response) => {
+          match response.text().await {
+            Ok(text) => {
+              let data = &text[500..];
+              let cleaned_data: String = data
+                .lines()
+                .skip(1)
+                .collect::<Vec<&str>>()
+                .join("\n");
+              println!("{}\n", cleaned_data.trim());
+
+              let mut csv_data = csv_data.lock().await;
+              csv_data.push(data.trim().to_string());
+
+              let data_bytes = text.as_bytes();
+              let cursor = Cursor::new(data_bytes);
+
+              match CsvReader::new(cursor).finish() {
+                Ok(_df) => {
+                    // println!("{:?}", df);
+                }
+                Err(e) => eprintln!("Error reading CSV from {}: {}", link, e),
               }
-          })
-      }).collect();
-  
-      future::join_all(tasks).await;
-  
-      // let csv_data = csv_data.lock().await;
-      // println!("Collected CSV data: {:?}", *csv_data);
+            }
+            Err(e) => eprintln!("Error fetching CSV from {}: {}", link, e),
+          }
+        }
+        Err(e) => eprintln!("Error downloading from {}: {}", link, e),
+      }
+    })
+  }).collect();
+
+  future::join_all(tasks).await;
+
+  let csv_data = csv_data.lock().await;
+  println!("Collected CSV data: {:?}", *csv_data);
 
   Ok(())
 }
