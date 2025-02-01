@@ -34,6 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .collect();
 
   let csv_data: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+  let header = "Date,Energy (kcal),Activity,Distance(km),Duration(min),Pace(min),Heart rate: Average(min),Heart rate: Maximum(min)\n";
 
   let tasks: Vec<_> = csv_links.into_iter().map(|link| {
     let csv_data = Arc::clone(&csv_data);
@@ -57,8 +58,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
               let cursor = Cursor::new(data_bytes);
 
               match CsvReader::new(cursor).finish() {//.finish() {
-                Ok(df) => {
-                  println!("{:?}", df);
+                Ok(_df) => {
+                  println!("{:?}\n", text.replace(header, ""));
                 }
                 Err(e) => eprintln!("Error reading CSV from {}: {}", link, e),
               }
