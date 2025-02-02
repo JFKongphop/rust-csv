@@ -4,9 +4,10 @@ use futures::future;
 use tokio::sync::Mutex;
 use dotenv::dotenv;
 use std::{
-  env, error::Error, fs::File, io::Cursor
+  env, 
+  error::Error, 
+  io::Cursor
 };
-// use polars_lazy::{dsl::functions::concat, frame::LazyFrame, prelude::UnionArgs};
 use polars::prelude::CsvReader;
 
 #[derive(Deserialize, Debug)]
@@ -34,33 +35,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .collect();
 
   let csv_data: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
-  let mut header: &str = "Date,Energy (kcal),Activity,Distance(km),Duration(min),Pace(min),Heart rate: Average(min),Heart rate: Maximum(min)\n";
+  let header = String::from("Date,Energy (kcal),Activity,Distance(km),Duration(min),Pace(min),Heart rate: Average(min),Heart rate: Maximum(min)\n");
 
   let tasks: Vec<_> = csv_links.into_iter().map(|link| {
     let csv_data = Arc::clone(&csv_data);
+    let header = header.clone();
+
     tokio::spawn(async move {
       match reqwest::get(&link).await {
         Ok(response) => {
           match response.text().await {
             Ok(text) => {
-              // let data = &text[500..];
-              // let cleaned_data: String = data
-              //   .lines()
-              //   .skip(1)
-              //   .collect::<Vec<&str>>()
-              //   .join("\n");
-              // // println!("{}\n", cleaned_data.trim());
-
               let mut csv_data = csv_data.lock().await;
-              // csv_data.push(text.trim().to_string());
-
               let data_bytes = text.as_bytes();
               let cursor = Cursor::new(data_bytes);
 
-              match CsvReader::new(cursor).finish() {//.finish() {
+              match CsvReader::new(cursor).finish() {
                 Ok(_df) => {
-                  // println!("{:?}\n", text.replace(header, ""));
-                  csv_data.push(text.replace(header, ""));
+                  csv_data.push(text.replace(header.as_str(), ""));
                 }
                 Err(e) => eprintln!("Error reading CSV from {}: {}", link, e),
               }
@@ -75,51 +67,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   future::join_all(tasks).await;
 
-  // let csv_data = csv_data.lock().await;
-  // println!("Collected CSV data: {:?}", *csv_data);
-
   let joined_csv_data = {
-    // let csv_data = csv_data.lock().await;
     let csv_data = csv_data.lock().await;
-    csv_data.join("\n") // Join with newline as the delimiter
+    csv_data.join("\n")
   };
 
-  let data_bytes = joined_csv_data.as_bytes();
+  let new_data = format!("{}{}", header, joined_csv_data);
+  let data_bytes = new_data.as_bytes();
   let cursor = Cursor::new(data_bytes);
 
-  match CsvReader::new(cursor).finish() {
-    Ok(df) => {
-      println!("{:?}", df);
-      
-    }
-    Err(e) => eprintln!("Error reading CSV from: {}", e),
-  }
+  let running_df: DataFrame = CsvReader::new(cursor)
+    .finish()
+    .expect("CSV reading should not fail");
+
+  let running_df = running_df.drop("Date").expect("Invalid Date");
+  println!("{:?}", running_df);
 
 
-  // Configure CSV read options
-  // let csv_options = CsvReadOptions {
-  //     has_header: true, // If the CSV has a header
-  //     // Other options like separator, dtype, etc.
-  //     ..Default::default()
-  // };
-
-  // let link = "https://your-csv-file-url.csv";
-
-  // // Fetch the CSV data from the link
-  // let resp = reqwest::get(link)
-  //     .await?
-  //     .text().await?;
-
-  // // Convert the response text to bytes and create a Cursor
-  // let data_bytes = resp.as_bytes();
-  // let cursor = Cursor::new(data_bytes);
-
-  // CsvReadOptions::default()
-  // .with_has_header(true)
-  // .try_into_reader_with_file_path(Some("iris.csv".into()))?
-  // .finish();
-
-
+  
 
   Ok(())
 }
