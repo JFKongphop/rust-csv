@@ -11,3 +11,4 @@ polars-lazy = "0.46.0"
 reqwest = { version = "0.10", features = ["json"] }
 serde = "1.0.217"
 tokio = { version = "0.2", features = ["full"] }
+ultibi = "0.1.6"

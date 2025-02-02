@@ -9,6 +9,7 @@ use std::{
   io::Cursor
 };
 use polars::prelude::CsvReader;
+use ultibi::prelude::polars::prelude::Utf8Chunked;
 
 #[derive(Deserialize, Debug)]
 struct FileInfo {
@@ -80,11 +81,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .finish()
     .expect("CSV reading should not fail");
 
-  let running_df = running_df.drop("Date").expect("Invalid Date");
-  println!("{:?}", running_df);
+  let mut running_df = running_df.drop("Date").expect("Invalid Date");
+
+
+
+  println!("{:?}", running_df.apply("Activity", activity_to_type));
+
+
+
 
 
   
 
   Ok(())
+}
+
+fn activity_to_type(str_val: &Column) -> Column {
+  str_val.str()
+    .unwrap() 
+    .into_iter()
+    .map(|opt_name: Option<&str>| {
+        match opt_name {
+          Some(val) if val.contains("indoor") => Some("indoor"),
+          _ => Some("outdoor"),
+        }
+      }
+    )
+    .collect::<StringChunked>().into_column()
 }
