@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .collect();
 
   let csv_data: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
-  let header = "Date,Energy (kcal),Activity,Distance(km),Duration(min),Pace(min),Heart rate: Average(min),Heart rate: Maximum(min)\n";
+  let mut header: &str = "Date,Energy (kcal),Activity,Distance(km),Duration(min),Pace(min),Heart rate: Average(min),Heart rate: Maximum(min)\n";
 
   let tasks: Vec<_> = csv_links.into_iter().map(|link| {
     let csv_data = Arc::clone(&csv_data);
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
               //   .join("\n");
               // // println!("{}\n", cleaned_data.trim());
 
-              // let mut csv_data = csv_data.lock().await;
+              let mut csv_data = csv_data.lock().await;
               // csv_data.push(text.trim().to_string());
 
               let data_bytes = text.as_bytes();
@@ -59,7 +59,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
               match CsvReader::new(cursor).finish() {//.finish() {
                 Ok(_df) => {
-                  println!("{:?}\n", text.replace(header, ""));
+                  // println!("{:?}\n", text.replace(header, ""));
+                  csv_data.push(text.replace(header, ""));
                 }
                 Err(e) => eprintln!("Error reading CSV from {}: {}", link, e),
               }
@@ -74,26 +75,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   future::join_all(tasks).await;
 
-  // // let csv_data = csv_data.lock().await;
-  // // println!("Collected CSV data: {:?}", *csv_data);
+  // let csv_data = csv_data.lock().await;
+  // println!("Collected CSV data: {:?}", *csv_data);
 
-  // let joined_csv_data = {
-  //   // let csv_data = csv_data.lock().await;
-  //   let csv_data = csv_data.lock().await;
-  //   csv_data.join("\n") // Join with newline as the delimiter
-  // };
+  let joined_csv_data = {
+    // let csv_data = csv_data.lock().await;
+    let csv_data = csv_data.lock().await;
+    csv_data.join("\n") // Join with newline as the delimiter
+  };
 
-  // let data_bytes = joined_csv_data.as_bytes();
-  // let cursor = Cursor::new(data_bytes);
+  let data_bytes = joined_csv_data.as_bytes();
+  let cursor = Cursor::new(data_bytes);
 
-  // println!("{}", joined_csv_data);
-
-  // match CsvReader::new(cursor).finish() {
-  //   Ok(df) => {
-  //     println!("{:?}", df);
-  //   }
-  //   Err(e) => eprintln!("Error reading CSV from: {}", e),
-  // }
+  match CsvReader::new(cursor).finish() {
+    Ok(df) => {
+      println!("{:?}", df);
+      
+    }
+    Err(e) => eprintln!("Error reading CSV from: {}", e),
+  }
 
 
   // Configure CSV read options
