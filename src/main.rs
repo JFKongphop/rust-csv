@@ -84,26 +84,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
   // let mut running_df = running_df.drop("Date").expect("Invalid Date");
   let _ = running_df.apply("Activity", activity_to_type);
 
-  let format = "%Y-%m-%d %H:%M:%S"; // Define the format of the input string
-  let full_date = "2567-03-02 17:55:38 - 18:25:47";
-  let only_start = &full_date[..19];
-  let (db_year, date_time) = only_start.split_at(4);
-  let year: i32 = db_year.parse::<i32>()? - 543;
-  
-  let date_str = format!("{}{}", year, date_time);
-  println!("{}", date_str);
-
-  // Parse the string into a NaiveDateTime
-  let naive_datetime = NaiveDateTime::parse_from_str(&date_str, format)?;
-
-  // Convert to timestamp correctly
-  let timestamp = naive_datetime.and_utc().timestamp();
-  
-  println!("Unix timestamp: {}", timestamp);
-  // let date_lenght = "2567-03-02 17:55:38".len();
-  // let slice = &text[..19]; // "Hello"
-  // println!("{}", slice);
-
   let timestamp_col = running_df
     .column("Date")?
     .str()?
@@ -119,66 +99,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let _ = running_df.with_column(timestamp_col);
 
-  let _ = running_df.sort(["Timestamp"], Default::default());
-
-  
-
-  // VALID
-  // let s0 = Series::new("Date".into(), &[
-  //   "2567-03-02 17:55:38 - 18:25:47",
-  //   "2567-04-10 14:30:12 - 15:00:45",
-  //   "2567-05-20 09:15:05 - 09:45:30",
-  // ]);
-
-  // let mut df = DataFrame::new(vec![s0.into()])?;
-
-  // let date_col = df
-  // .column("Date")
-  // .unwrap()
-  // .str() // Convert to string chunked series
-  // .unwrap()
-  // .into_iter()
-  // .map(|opt_str| opt_str.map(|s| s.split_whitespace().next().unwrap_or("")))
-  // .collect::<StringChunked>().into_column();
-  // df.with_column(date_col).unwrap(); // A
-
-  // println!("{}", df);
-
-//   let s0 = Series::new("Date".into(), &[
-//     "2567-03-02 17:55:38 - 18:25:47",
-//     "2567-04-10 14:30:12 - 15:00:45",
-//     "2567-05-20 09:15:05 - 09:45:30",
-// ]);
-
-// // Create a DataFrame with the "Date" column
-// let mut df = DataFrame::new(vec![s0.into()])?;
-
-// let col = df
-//     .column("Date")
-//     .unwrap()
-//     .str()
-//     .unwrap()
-//     .into_iter()
-//     .map(|opt_str| opt_str.map(|s| s.split_whitespace().next().unwrap_or("")))
-//     .collect::<StringChunked>(); // Collect into StringChunked
-
-// // Convert the ChunkedArray into Series and rename it, binding to a variable
-// let date_col = col.into_series();// .rename("OnlyDate".into());
-
-// // Add the new column to the DataFrame
-
-
-// df.with_column(date_col)?; // Now this works because date_col is no longer tempora
-
-// df.rename("", "helloworld".into());
-
-// // Print the DataFrame
-  println!("{}", running_df);
-
-  
-
-
-
+  let running_df = running_df
+    .filter(&running_df["Timestamp"].is_not_null())?
+    .sort(["Timestamp"], Default::default()); // Sort by Timestamp
+  println!("{:?}", running_df);
 
 
   Ok(())
@@ -210,3 +134,12 @@ fn date_to_timestamp(full_date: &str) -> Option<i64> {
     .ok()
     .map(|dt| dt.and_utc().timestamp())
 }
+
+fn sort_with_specific_order(df: &DataFrame, descending: bool) -> PolarsResult<DataFrame> {
+  df.sort(
+      ["sepal_width"],
+      SortMultipleOptions::new()
+          .with_order_descending(descending)
+  )
+}
+
