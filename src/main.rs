@@ -116,7 +116,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
   // println!("{:?}", indoor);
   // println!("{:?}", outdoor);
 
-  let distance
+  
+  let distance2k = filter_distance_range(&running_df, 2.0, 2.25);
+  println!("{:?}", distance2k);
 
 
 
@@ -161,7 +163,9 @@ fn activity_filter(df: &DataFrame, activity: &str) -> PolarsResult<DataFrame> {
 use std::ops::BitAnd; // Import the BitAnd trait
 
 fn filter_distance_range(df: &DataFrame, min: f64, max: f64) -> PolarsResult<DataFrame> {
-    let distance_column = df.column("Distance(km)")?.f64()?; // Ensure it's a float64 column
-    let mask = distance_column.gt(min).bitand(distance_column.lt(max));
-    df.filter(&mask)
+  let distance_column = df.column("Distance(km)")?.f64()?;
+  let mask = distance_column
+    .gt(min)
+    .bitand(distance_column.lt(max));
+  df.filter(&mask)
 }
