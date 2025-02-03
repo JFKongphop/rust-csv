@@ -102,22 +102,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let running_df = running_df
     .filter(&running_df["Timestamp"].is_not_null())?
     .sort(["Timestamp"], Default::default())?;
-  println!("{:?}", running_df);
+  // println!("{:?}", running_df);
 
   // running_df.filter(&running_df["Date"].str().map(|date: Option<&str>| date.));
 
   let distance5k = running_df
   .filter(&running_df["Distance(km)"].f64().unwrap().gt(5.1))?; // Use `gt` for comparison
 
+  // let indoor = running_df.filter(&activity_column.equal("indoor"))?;
+  let indoor = activity_filter(&running_df, "indoor");
+  let outdoor = activity_filter(&running_df, "outdoor");
 
-  let indoor = running_df.filter(&running_df["Activity"].str().unwrap().equal("indoor"))?;
+  // println!("{:?}", indoor);
+  // println!("{:?}", outdoor);
 
-  println!("{:?}", indoor);
+  let distance
 
 
 
 
-  println!("{:?}", distance5k);
+  // println!("{:?}", distance5k);
   Ok(())
 }
 
@@ -147,12 +151,17 @@ fn date_to_timestamp(full_date: &str) -> Option<i64> {
     .ok()
     .map(|dt| dt.and_utc().timestamp())
 }
-
-fn sort_with_specific_order(df: &DataFrame, descending: bool) -> PolarsResult<DataFrame> {
-  df.sort(
-      ["sepal_width"],
-      SortMultipleOptions::new()
-          .with_order_descending(descending)
-  )
+ 
+fn activity_filter(df: &DataFrame, activity: &str) -> PolarsResult<DataFrame> {
+  let activity_column = df.column("Activity")?.str()?;
+  let mask = activity_column.equal(activity);
+  df.filter(&mask)
 }
 
+use std::ops::BitAnd; // Import the BitAnd trait
+
+fn filter_distance_range(df: &DataFrame, min: f64, max: f64) -> PolarsResult<DataFrame> {
+    let distance_column = df.column("Distance(km)")?.f64()?; // Ensure it's a float64 column
+    let mask = distance_column.gt(min).bitand(distance_column.lt(max));
+    df.filter(&mask)
+}
