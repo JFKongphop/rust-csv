@@ -106,13 +106,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   // running_df.filter(&running_df["Date"].str().map(|date: Option<&str>| date.));
 
-  let running_df = running_df
+  let distance5k = running_df
   .filter(&running_df["Distance(km)"].f64().unwrap().gt(5.1))?; // Use `gt` for comparison
 
 
+  let indoor = running_df.filter(&running_df["Activity"].str().unwrap().equal("indoor"))?;
+
+  println!("{:?}", indoor);
 
 
-  println!("{:?}", running_df);
+
+
+  println!("{:?}", distance5k);
   Ok(())
 }
 
