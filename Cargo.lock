@@ -3010,6 +3010,7 @@ dependencies = [
 name = "rust-csv"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "dotenv",
  "futures",
  "polars 0.45.1",

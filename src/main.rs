@@ -9,7 +9,7 @@ use std::{
   io::Cursor
 };
 use polars::prelude::CsvReader;
-use ultibi::prelude::polars::prelude::Utf8Chunked;
+use chrono::NaiveDateTime;
 
 #[derive(Deserialize, Debug)]
 struct FileInfo {
@@ -77,21 +77,109 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let data_bytes = new_data.as_bytes();
   let cursor = Cursor::new(data_bytes);
 
-  let running_df: DataFrame = CsvReader::new(cursor)
+  let mut running_df: DataFrame = CsvReader::new(cursor)
     .finish()
     .expect("CSV reading should not fail");
 
-  let mut running_df = running_df.drop("Date").expect("Invalid Date");
+  // let mut running_df = running_df.drop("Date").expect("Invalid Date");
+  let _ = running_df.apply("Activity", activity_to_type);
 
+  let format = "%Y-%m-%d %H:%M:%S"; // Define the format of the input string
+  let full_date = "2567-03-02 17:55:38 - 18:25:47";
+  let only_start = &full_date[..19];
+  let (db_year, date_time) = only_start.split_at(4);
+  let year: i32 = db_year.parse::<i32>()? - 543;
+  
+  let date_str = format!("{}{}", year, date_time);
+  println!("{}", date_str);
 
+  // Parse the string into a NaiveDateTime
+  let naive_datetime = NaiveDateTime::parse_from_str(&date_str, format)?;
 
-  println!("{:?}", running_df.apply("Activity", activity_to_type));
+  // Convert to timestamp correctly
+  let timestamp = naive_datetime.and_utc().timestamp();
+  
+  println!("Unix timestamp: {}", timestamp);
+  // let date_lenght = "2567-03-02 17:55:38".len();
+  // let slice = &text[..19]; // "Hello"
+  // println!("{}", slice);
 
+  let timestamp_col = running_df
+    .column("Date")?
+    .str()?
+    .into_iter()
+    .map(|date_opt: Option<&str>| 
+      date_opt.and_then(
+        |full_date| date_to_timestamp(full_date)
+      )
+    )
+    .collect::<Int64Chunked>()
+    .into_series()
+    .with_name("Timestamp".into());
 
+  let _ = running_df.with_column(timestamp_col);
 
-
+  let _ = running_df.sort(["Timestamp"], Default::default());
 
   
+
+  // VALID
+  // let s0 = Series::new("Date".into(), &[
+  //   "2567-03-02 17:55:38 - 18:25:47",
+  //   "2567-04-10 14:30:12 - 15:00:45",
+  //   "2567-05-20 09:15:05 - 09:45:30",
+  // ]);
+
+  // let mut df = DataFrame::new(vec![s0.into()])?;
+
+  // let date_col = df
+  // .column("Date")
+  // .unwrap()
+  // .str() // Convert to string chunked series
+  // .unwrap()
+  // .into_iter()
+  // .map(|opt_str| opt_str.map(|s| s.split_whitespace().next().unwrap_or("")))
+  // .collect::<StringChunked>().into_column();
+  // df.with_column(date_col).unwrap(); // A
+
+  // println!("{}", df);
+
+//   let s0 = Series::new("Date".into(), &[
+//     "2567-03-02 17:55:38 - 18:25:47",
+//     "2567-04-10 14:30:12 - 15:00:45",
+//     "2567-05-20 09:15:05 - 09:45:30",
+// ]);
+
+// // Create a DataFrame with the "Date" column
+// let mut df = DataFrame::new(vec![s0.into()])?;
+
+// let col = df
+//     .column("Date")
+//     .unwrap()
+//     .str()
+//     .unwrap()
+//     .into_iter()
+//     .map(|opt_str| opt_str.map(|s| s.split_whitespace().next().unwrap_or("")))
+//     .collect::<StringChunked>(); // Collect into StringChunked
+
+// // Convert the ChunkedArray into Series and rename it, binding to a variable
+// let date_col = col.into_series();// .rename("OnlyDate".into());
+
+// // Add the new column to the DataFrame
+
+
+// df.with_column(date_col)?; // Now this works because date_col is no longer tempora
+
+// df.rename("", "helloworld".into());
+
+// // Print the DataFrame
+  println!("{}", running_df);
+
+  
+
+
+
+
 
   Ok(())
 }
@@ -108,4 +196,17 @@ fn activity_to_type(str_val: &Column) -> Column {
       }
     )
     .collect::<StringChunked>().into_column()
+}
+
+
+fn date_to_timestamp(full_date: &str) -> Option<i64> {
+  let format = "%Y-%m-%d %H:%M:%S";
+  let only_start = &full_date[..19];
+  let (db_year, date_time) = only_start.split_at(4);
+  let year = db_year.parse::<i32>().ok()? - 543;
+  let date_str = format!("{}{}", year, date_time);
+
+  NaiveDateTime::parse_from_str(&date_str, format)
+    .ok()
+    .map(|dt| dt.and_utc().timestamp())
 }
