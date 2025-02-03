@@ -101,10 +101,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let running_df = running_df
     .filter(&running_df["Timestamp"].is_not_null())?
-    .sort(["Timestamp"], Default::default()); // Sort by Timestamp
+    .sort(["Timestamp"], Default::default())?;
   println!("{:?}", running_df);
 
+  // running_df.filter(&running_df["Date"].str().map(|date: Option<&str>| date.));
 
+  let running_df = running_df
+  .filter(&running_df["Distance(km)"].f64().unwrap().gt(5.1))?; // Use `gt` for comparison
+
+
+
+
+  println!("{:?}", running_df);
   Ok(())
 }
 
