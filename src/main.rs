@@ -9,7 +9,7 @@ use std::{
   io::Cursor
 };
 use polars::prelude::CsvReader;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, Datelike};
 
 #[derive(Deserialize, Debug)]
 struct FileInfo {
@@ -116,17 +116,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
   // println!("{:?}", indoor);
   // println!("{:?}", outdoor);
 
-  let distance_400m = filter_distance(&running_df, 0.38, 0.43);
-  let distance_1k = filter_distance(&running_df, 1.0, 1.1);
+  let distance_400m = filter_distance(&running_df, 0.38, 0.43)?;
+  let distance_1k = filter_distance(&running_df, 1.0, 1.1)?;
   let distance_1_2k = filter_distance(&running_df, 1.2, 1.35);
   let distance_2k = filter_distance(&running_df, 2.0, 2.25);
+  
+
+  let d = sum_distance(&distance_1k)?;
+  println!("{}", d);
+
+  // let col = distance_400m.select(["Distance(km)"]);
+
+
 
   
 
 
 
 
-  // println!("{:?}", distance5k);
+  println!("{:?}", distance_2k);
   Ok(())
 }
 
@@ -172,3 +180,14 @@ fn filter_distance(df: &DataFrame, min: f64, max: f64) -> PolarsResult<DataFrame
     .bitand(distance_column.lt(max));
   df.filter(&mask)
 }
+
+fn sum_distance(df: &DataFrame) -> PolarsResult<f64> {
+  let distance_column = df.column("Distance(km)")?.f64()?; // Ensure it's a float64 column
+  Ok(distance_column.sum().unwrap_or(0.0)) // Return sum, default to 0.0 if empty
+}
+
+// fn filter_date_contains(df: &DataFrame, pattern: &str) -> PolarsResult<DataFrame> {
+//   let date_column = df.column("Date")?.str()?; // Ensure it's a string column
+//   let mask = date_column.contains(pattern, false)?; // `false` means case-sensitive search
+//   df.filter(&mask)
+// }
