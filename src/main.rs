@@ -9,7 +9,7 @@ use std::{
   io::Cursor
 };
 use polars::prelude::CsvReader;
-use chrono::{NaiveDateTime, Datelike};
+use chrono::{Datelike, NaiveDateTime};
 
 #[derive(Deserialize, Debug)]
 struct FileInfo {
@@ -127,6 +127,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   // let col = distance_400m.select(["Distance(km)"]);
 
+  let format = "%Y-%m-%d %H:%M:%S";
+  let date_str = "2024-01-01 00:00:00";
+
+  let date = NaiveDateTime::parse_from_str(&date_str, format).ok().expect("Invalid date");
+  
+  let ts = date.and_utc().timestamp();
+  println!("{}", ts);
+    // .map(|dt| dt.and_utc().timestamp())
+
+  let jan = filter_month(&running_df, "2025-01");
+
+    
 
 
   
@@ -134,7 +146,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
 
-  println!("{:?}", distance_2k);
+  println!("{:?}", jan);
   Ok(())
 }
 
@@ -186,8 +198,52 @@ fn sum_distance(df: &DataFrame) -> PolarsResult<f64> {
   Ok(distance_column.sum().unwrap_or(0.0)) // Return sum, default to 0.0 if empty
 }
 
-// fn filter_date_contains(df: &DataFrame, pattern: &str) -> PolarsResult<DataFrame> {
-//   let date_column = df.column("Date")?.str()?; // Ensure it's a string column
-//   let mask = date_column.contains(pattern, false)?; // `false` means case-sensitive search
-//   df.filter(&mask)
-// }
+fn convert_date_timestamp(date: &str) ->i64 {
+  let format = "%Y-%m-%d %H:%M:%S";
+  let date = NaiveDateTime::parse_from_str(&date, format)
+    .ok()
+    .expect("Invalid date");
+
+  date.and_utc().timestamp()
+}
+
+fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
+  let date_part: Vec<i64> = year_month
+    .split('-')
+    .filter_map(|part| part.parse::<i64>().ok()) // Parse each part to i64
+    .collect();
+  let (year, month) = (date_part[0], date_part[1]);
+
+  let mut end_month = String::new();
+
+  if month == 12 {
+    end_month = format!("{}-{}", year + 1, 1);
+  }
+  else {
+    end_month = format!("{}-{}", year, month + 1);
+  }
+
+  let start_date = format!("{}-01 00:00:00", year_month);
+  let end_date = format!("{}-01 00:00:00", end_month);
+
+  println!("{} {}", start_date,  end_date);
+  // println!("Year: {}, Month: {}", year, month);
+
+  // let timestamp_column = df.column("Timestamp")?.i64()?;
+
+  // let date = format!("{}-01 00:00:00", year_month);
+
+  let start_timestamp = convert_date_timestamp(&start_date);
+  let end_timestamp = convert_date_timestamp(&end_date);
+
+  let distance_column = df.column("Timestamp")?.i64()?;
+  let mask = distance_column
+    .gt(start_timestamp)
+    .bitand(distance_column.lt(end_timestamp));
+  df.filter(&mask)
+
+
+  
+  // let range = date.and_utc().timestamp();
+  // println!("{}", ts);
+}
