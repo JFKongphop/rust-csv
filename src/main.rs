@@ -6,10 +6,11 @@ use dotenv::dotenv;
 use std::{
   env, 
   error::Error, 
-  io::Cursor
+  io::Cursor,
+  ops::BitAnd
 };
 use polars::prelude::CsvReader;
-use chrono::{Datelike, NaiveDateTime};
+use chrono::NaiveDateTime;
 
 #[derive(Deserialize, Debug)]
 struct FileInfo {
@@ -136,7 +137,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
   println!("{}", ts);
     // .map(|dt| dt.and_utc().timestamp())
 
-  let jan = filter_month(&running_df, "2025-01");
+  let jan_2025 = filter_month(&running_df, "2025-01")?;
+  let sum_dis_jan_2025 = sum_distance(&jan_2025)?;
 
     
 
@@ -146,7 +148,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
 
-  println!("{:?}", jan);
+  println!("{:?}", sum_dis_jan_2025);
   Ok(())
 }
 
@@ -183,7 +185,6 @@ fn activity_filter(df: &DataFrame, activity: &str) -> PolarsResult<DataFrame> {
   df.filter(&mask)
 }
 
-use std::ops::BitAnd; // Import the BitAnd trait
 
 fn filter_distance(df: &DataFrame, min: f64, max: f64) -> PolarsResult<DataFrame> {
   let distance_column = df.column("Distance(km)")?.f64()?;
@@ -194,8 +195,8 @@ fn filter_distance(df: &DataFrame, min: f64, max: f64) -> PolarsResult<DataFrame
 }
 
 fn sum_distance(df: &DataFrame) -> PolarsResult<f64> {
-  let distance_column = df.column("Distance(km)")?.f64()?; // Ensure it's a float64 column
-  Ok(distance_column.sum().unwrap_or(0.0)) // Return sum, default to 0.0 if empty
+  let distance_column = df.column("Distance(km)")?.f64()?;
+  Ok(distance_column.sum().unwrap_or(0.0))
 }
 
 fn convert_date_timestamp(date: &str) ->i64 {
@@ -232,6 +233,6 @@ fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
   let mask = distance_column
     .gt(start_timestamp)
     .bitand(distance_column.lt(end_timestamp));
-  
+
   df.filter(&mask)
 }
