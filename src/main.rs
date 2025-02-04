@@ -210,28 +210,20 @@ fn convert_date_timestamp(date: &str) ->i64 {
 fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
   let date_part: Vec<i64> = year_month
     .split('-')
-    .filter_map(|part| part.parse::<i64>().ok()) // Parse each part to i64
+    .filter_map(|part| part.parse::<i64>().ok()) 
     .collect();
   let (year, month) = (date_part[0], date_part[1]);
 
-  let mut end_month = String::new();
-
-  if month == 12 {
-    end_month = format!("{}-{}", year + 1, 1);
-  }
-  else {
-    end_month = format!("{}-{}", year, month + 1);
-  }
+  let end_month = if month == 12 {
+    format!("{}-{}", year + 1, 1)
+  } else {
+    format!("{}-{}", year, month + 1)
+  };
 
   let start_date = format!("{}-01 00:00:00", year_month);
   let end_date = format!("{}-01 00:00:00", end_month);
 
   println!("{} {}", start_date,  end_date);
-  // println!("Year: {}, Month: {}", year, month);
-
-  // let timestamp_column = df.column("Timestamp")?.i64()?;
-
-  // let date = format!("{}-01 00:00:00", year_month);
 
   let start_timestamp = convert_date_timestamp(&start_date);
   let end_timestamp = convert_date_timestamp(&end_date);
@@ -240,10 +232,6 @@ fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
   let mask = distance_column
     .gt(start_timestamp)
     .bitand(distance_column.lt(end_timestamp));
-  df.filter(&mask)
-
-
   
-  // let range = date.and_utc().timestamp();
-  // println!("{}", ts);
+  df.filter(&mask)
 }
