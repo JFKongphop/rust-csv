@@ -145,26 +145,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let group = running_df.group_by(["Activity"])?.select(["Distance(km)"]).sum();
 
-  let only_date_df = &running_df.apply("Date", only_date_column)?;
+  let only_date_df = &running_df
+    .apply("Date", only_date_column)?
+    .sort([timestamp_col], Default::default())?;
 
-  l
+  let month_sum = &only_date_df
+    .group_by(["Date"])?
+    .select(["Distance(km)"])
+    .sum()?
+    .sort(["Date"], Default::default())?;
 
-
-
-
-
-
-
-
-    
-
-
-  
-
-
-
-
-  println!("{:?}", only_date_df);
+  println!("{:?}", month_sum);
   Ok(())
 }
 
