@@ -101,7 +101,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let _ = running_df.with_column(timestamp_col);
 
   let timestamp_col = "Timestamp";
-  let running_df = running_df
+  let mut running_df = running_df
     .filter(&running_df.column(&timestamp_col)?.is_not_null())?
     .sort([timestamp_col], Default::default())?;
   // println!("{:?}", running_df);
@@ -145,6 +145,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let group = running_df.group_by(["Activity"])?.select(["Distance(km)"]).sum();
 
+  let only_date_df = &running_df.apply("Date", only_date_column)?;
+
+  l
+
+
+
+
+
 
 
 
@@ -156,7 +164,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
 
-  println!("{:?}", group);
+  println!("{:?}", only_date_df);
   Ok(())
 }
 
@@ -172,6 +180,22 @@ fn activity_to_type(str_val: &Column) -> Column {
       }
     )
     .collect::<StringChunked>().into_column()
+}
+
+fn only_date_column(date_col: &Column) -> Column {
+  date_col
+    .str()
+    .unwrap()
+    .into_iter()
+    .map(|d| d.and_then(|dd| Some(&dd[..7])))
+    // .map(|d| {
+    //   match d {
+    //     Some(dd) => Some(&dd[..7]),
+    //     _ => Some("")
+    //   }
+    // })
+    .collect::<StringChunked>()
+    .into_column()
 }
 
 
