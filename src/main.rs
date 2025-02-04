@@ -100,9 +100,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let _ = running_df.with_column(timestamp_col);
 
+  let timestamp_col = "Timestamp";
   let running_df = running_df
-    .filter(&running_df["Timestamp"].is_not_null())?
-    .sort(["Timestamp"], Default::default())?;
+    .filter(&running_df.column(&timestamp_col)?.is_not_null())?
+    .sort([timestamp_col], Default::default())?;
   // println!("{:?}", running_df);
 
   // running_df.filter(&running_df["Date"].str().map(|date: Option<&str>| date.));
@@ -114,13 +115,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let indoor = activity_filter(&running_df, "indoor");
   let outdoor = activity_filter(&running_df, "outdoor");
 
+
   // println!("{:?}", indoor);
   // println!("{:?}", outdoor);
 
   let distance_400m = filter_distance(&running_df, 0.38, 0.43)?;
   let distance_1k = filter_distance(&running_df, 1.0, 1.1)?;
-  let distance_1_2k = filter_distance(&running_df, 1.2, 1.35);
-  let distance_2k = filter_distance(&running_df, 2.0, 2.25);
+  let distance_1_2k = filter_distance(&running_df, 1.2, 1.35)?;
+  let distance_2k = filter_distance(&running_df, 2.0, 2.25)?;
   
 
   let d = sum_distance(&distance_1k)?;
@@ -131,7 +133,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let format = "%Y-%m-%d %H:%M:%S";
   let date_str = "2024-01-01 00:00:00";
 
-  let date = NaiveDateTime::parse_from_str(&date_str, format).ok().expect("Invalid date");
+  let date = NaiveDateTime::parse_from_str(&date_str, format)
+    .ok().expect("Invalid date");
   
   let ts = date.and_utc().timestamp();
   println!("{}", ts);
@@ -139,6 +142,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let jan_2025 = filter_month(&running_df, "2025-01")?;
   let sum_dis_jan_2025 = sum_distance(&jan_2025)?;
+
+  let group = running_df.group_by(["Activity"])?.select(["Distance(km)"]).sum();
+
+
+
 
     
 
@@ -148,7 +156,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
 
-  println!("{:?}", sum_dis_jan_2025);
+  println!("{:?}", group);
   Ok(())
 }
 
