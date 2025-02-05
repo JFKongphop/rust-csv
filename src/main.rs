@@ -288,6 +288,7 @@ fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
   df.filter(&mask)
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct MonthlyDistance {
   date: String,
