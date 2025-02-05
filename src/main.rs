@@ -140,7 +140,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
   println!("{}", ts);
     // .map(|dt| dt.and_utc().timestamp())
 
-  let jan_2025 = filter_month(&running_df, "2025-01")?;
+  let mut jan_2025 = filter_month(&running_df, "2025-01")?;
+  // println!("{}", jan_2025);
+
   let sum_dis_jan_2025 = sum_distance(&jan_2025)?;
 
   let group = running_df.group_by(["Activity"])?.select(["Distance(km)"]).sum();
@@ -179,30 +181,68 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let full_month_2024 = full_2024.apply("Date", convert_date_month)?;
 
-  let mut df = df!(
-    "Value" => &[10, 25, 45, 55, 75, 90, 120, 150, 175, 200]
-  )?;
-
-  let value_column = df.column("Value")?.i32()?;
-
-  let range_column: Vec<String> = value_column
+  let jan_2025_pace = jan_2025.column("Pace(min)")?.str()?;
+  let range_pace_jan_2025: Vec<String> = jan_2025_pace
     .into_iter()
-    .map(|val| match val {
-        Some(v) if v <= 50 => "0-50".to_string(),
-        Some(v) if v <= 100 => "51-100".to_string(),
-        Some(v) if v <= 150 => "101-150".to_string(),
-        _ => "151-200".to_string(),
+    .map(|pace| match pace {
+        Some(p) if p.starts_with("3") => "3:00-4:00".to_string(),
+        Some(p) if p.starts_with("4") => "4:00-5:00".to_string(),
+        Some(p) if p.starts_with("5") => "5:00-6:00".to_string(),
+        Some(p) if p.starts_with("6") => "6:00-7:00".to_string(),
+        Some(p) if p.starts_with("7") => "7:00-8:00".to_string(),
+        Some(p) if p.starts_with("8") => "8:00-9:00".to_string(),
+        _ => "Other".to_string(),
     })
     .collect();
 
-  df.with_column(Series::new("Range".into(), range_column))?;
-
-  let grouped_df = df
-    .group_by(["Range"])?
+  // println!("{:?}", range_pace_jan_2025);
+  
+  let jan_2025_group = jan_2025.with_column(Series::new("Pace Group".into(), range_pace_jan_2025))?;
+  // running_df.drop("Date").expect("Invalid Date");
+  // let a = j.drop("Energy (kcal)").expect("helloworld");
+  // j.drop_many(["Heart rate: Maximum(min)", "Energy (kcal)"]);
+  
+  let jan_2025_pace_count = jan_2025_group
+    .group_by(["Pace Group"])?
     .count()?
-    .sort(["Range"], Default::default());
+    .sort(["Pace Group"], Default::default())?;
 
-  println!("{:?}", grouped_df);
+  println!("{:?}", jan_2025_pace_count);
+
+
+  let g = jan_2025_group
+    .filter(&jan_2025_group
+      .column("Pace Group")?
+      .str()?
+      .equal("Other")
+    );
+
+  println!("{:?}", g?.column("Pace(min)"));
+
+  // let mut df = df!(
+  //   "Value" => &[10, 25, 45, 55, 75, 90, 120, 150, 175, 200]
+  // )?;
+
+  // let value_column = df.column("Value")?.i32()?;
+
+  // let range_column: Vec<String> = value_column
+  //   .into_iter()
+  //   .map(|val| match val {
+        // Some(v) if v <= 50 => "0-50".to_string(),
+        // Some(v) if v <= 100 => "51-100".to_string(),
+        // Some(v) if v <= 150 => "101-150".to_string(),
+        // _ => "151-200".to_string(),
+  //   })
+  //   .collect();
+
+  // df.with_column(Series::new("Range".into(), range_column))?;
+
+  // let grouped_df = df
+  //   .group_by(["Range"])?
+  //   .count()?
+  //   .sort(["Range"], Default::default());
+
+  // println!("{:?}", grouped_df);
 
   
 
@@ -379,3 +419,22 @@ fn convert_date_month(str_val: &Column) -> Column {
     .into_column()
 }
 
+fn pace_min_to_sec(pace: &str) -> Option<u64> {
+  let pace_part: Vec<u64> = pace
+    .split('-')
+    .filter_map(|part| part.parse::<u64>().ok()) 
+    .collect();
+  let (min, sec) = (pace_part[0], pace_part[1]);
+
+  Some((min * 60) + sec)
+}
+
+fn convert_pace_sec(pace: &Column) -> Column {
+  pace
+    .str()
+    .unwrap()
+    .into_iter()
+    .map(|p| p.and_then(pace_min_to_sec))
+    .collect::<UInt64Chunked>()
+    .into_column()
+}
