@@ -159,30 +159,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
   // for entry in struct_array {
   //   println!("Date: {}, Distance: {}", entry.date, entry.distance);
   // }
-  println!("{:#?}", struct_array); // Pretty format with indentation
+   // Pretty format with indentation
 
   let only_2024 = contain_year(month_sum, "2567")?;
   let mut full_2024 = fill_missing_months(&only_2024)?;
 
   let full_2024 = full_2024.rename("Distance(km)_sum", "Distance(km)".into())?;
 
+  println!("{:#?}", full_2024);
+
+  let unique_month = full_2024.column("Date")?.unique()?.sort(Default::default())?;
+  let unique_count = full_2024.column("Date")?.n_unique()?;
+
   let sum_distance_2024 = sum_distance(&full_2024)?;
-  println!("{}", sum_distance_2024);
+  // println!("{}", sum_distance_2024);
 
   let month_name = number_to_month(01).expect("No month"); // Converts 1 to "January"
-  println!("{:?}", month_name);
-
-  
-  let h = "abc";
-  println!("{}", &h[1..]);
+  // println!("{:?}", month_name);
 
   let full_month_2024 = full_2024.apply("Date", convert_date_month)?;
-
   
 
-  
-
-  println!("{:?}", full_month_2024);
+  // println!("{:?}", full_month_2024);
   Ok(())
 }
 
