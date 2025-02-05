@@ -166,7 +166,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let full_2024 = full_2024.rename("Distance(km)_sum", "Distance(km)".into())?;
 
-  println!("{:#?}", full_2024);
+  // println!("{:#?}", full_2024);
 
   let unique_month = full_2024.column("Date")?.unique()?.sort(Default::default())?;
   let unique_count = full_2024.column("Date")?.n_unique()?;
@@ -178,6 +178,32 @@ async fn main() -> Result<(), Box<dyn Error>> {
   // println!("{:?}", month_name);
 
   let full_month_2024 = full_2024.apply("Date", convert_date_month)?;
+
+  let mut df = df!(
+    "Value" => &[10, 25, 45, 55, 75, 90, 120, 150, 175, 200]
+  )?;
+
+  let value_column = df.column("Value")?.i32()?;
+
+  let range_column: Vec<String> = value_column
+    .into_iter()
+    .map(|val| match val {
+        Some(v) if v <= 50 => "0-50".to_string(),
+        Some(v) if v <= 100 => "51-100".to_string(),
+        Some(v) if v <= 150 => "101-150".to_string(),
+        _ => "151-200".to_string(),
+    })
+    .collect();
+
+  df.with_column(Series::new("Range".into(), range_column))?;
+
+  let grouped_df = df
+    .group_by(["Range"])?
+    .count()?
+    .sort(["Range"], Default::default());
+
+  println!("{:?}", grouped_df);
+
   
 
   // println!("{:?}", full_month_2024);
