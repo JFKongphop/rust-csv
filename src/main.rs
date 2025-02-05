@@ -10,7 +10,7 @@ use std::{
   ops::BitAnd
 };
 use polars::prelude::CsvReader;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, NaiveDate};
 
 #[derive(Deserialize, Debug)]
 struct FileInfo {
@@ -166,14 +166,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let full_2024 = full_2024.rename("Distance(km)_sum", "Distance(km)".into())?;
 
+  let sum_distance_2024 = sum_distance(&full_2024)?;
+  println!("{}", sum_distance_2024);
+
+  let month_name = number_to_month(01).expect("No month"); // Converts 1 to "January"
+  println!("{:?}", month_name);
+
+  
+  let h = "abc";
+  println!("{}", &h[1..]);
+
+  let full_month_2024 = full_2024.apply("Date", convert_date_month)?;
 
   
 
   
 
-  
-
-  println!("{:?}", full_2024);
+  println!("{:?}", full_month_2024);
   Ok(())
 }
 
@@ -324,3 +333,25 @@ fn fill_missing_months(df: &DataFrame) -> PolarsResult<DataFrame> {
 
   Ok(result)
 }
+
+fn number_to_month(num: u32) -> Option<String> {
+  NaiveDate::from_ymd_opt(2000, num, 1)
+    .map(|d| d.format("%B").to_string())
+}
+
+fn convert_date_month(str_val: &Column) -> Column {
+  str_val.str()
+    .unwrap() 
+    .into_iter()
+    .map(|d| {
+      d.and_then(|dd| {
+        let month_str = &dd[5..7];
+        month_str.parse::<u32>().ok().and_then(|month_num| {
+          number_to_month(month_num)
+        })
+      })
+    })
+    .collect::<StringChunked>()
+    .into_column()
+}
+
