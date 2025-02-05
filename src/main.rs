@@ -156,19 +156,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .sort(["Date"], Default::default())?;
 
   let struct_array = dataframe_to_struct_vec(&month_sum)?;
-  for entry in struct_array {
-      println!("Date: {}, Distance: {}", entry.date, entry.distance);
-  }
+  // for entry in struct_array {
+  //   println!("Date: {}, Distance: {}", entry.date, entry.distance);
+  // }
+  println!("{:#?}", struct_array); // Pretty format with indentation
 
-  let new_year = contain_year(month_sum);
+  let only_2024 = contain_year(month_sum, "2567")?;
+  let mut full_2024 = fill_missing_months(&only_2024)?;
 
-  println!("{:?}", new_year);
+  let full_2024 = full_2024.rename("Distance(km)_sum", "Distance(km)".into())?;
+
 
   
 
   
 
-  println!("{:?}", month_sum);
+  
+
+  println!("{:?}", full_2024);
   Ok(())
 }
 
@@ -221,11 +226,11 @@ fn activity_filter(df: &DataFrame, activity: &str) -> PolarsResult<DataFrame> {
   df.filter(&mask)
 }
 
-fn contain_year(df: &DataFrame) -> PolarsResult<DataFrame> {
+fn contain_year(df: &DataFrame, year: &str) -> PolarsResult<DataFrame> {
   let activity_column = df.column("Date")?.str()?;
   let mask = activity_column
     .into_iter()    
-    .map(|opt_val| opt_val.map(|val| val.contains("2568")))
+    .map(|opt_val| opt_val.map(|val| val.starts_with(year)))
     .collect::<BooleanChunked>();
 
   df.filter(&mask)
@@ -283,6 +288,7 @@ fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
   df.filter(&mask)
 }
 
+#[derive(Debug)]
 struct MonthlyDistance {
   date: String,
   distance: f64,
@@ -302,4 +308,18 @@ fn dataframe_to_struct_vec(df: &DataFrame) -> PolarsResult<Vec<MonthlyDistance>>
     .collect();
 
   Ok(struct_vec)
+}
+
+fn fill_missing_months(df: &DataFrame) -> PolarsResult<DataFrame> {
+  let months: Vec<String> = (1..=12)
+    .map(|m| format!("2567-{:02}", m)) 
+    .collect();
+  
+  let full_months_df = df!("Date" => &months)?;
+
+  let result = full_months_df
+    .left_join(df, ["Date"], ["Date"])?
+    .fill_null(FillNullStrategy::Zero)?;
+
+  Ok(result)
 }
