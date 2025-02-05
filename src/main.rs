@@ -155,10 +155,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .sum()?
     .sort(["Date"], Default::default())?;
 
-    let struct_array = dataframe_to_struct_vec(&month_sum)?;
-    for entry in struct_array {
-        println!("Date: {}, Distance: {}", entry.date, entry.distance);
-    }
+  let struct_array = dataframe_to_struct_vec(&month_sum)?;
+  for entry in struct_array {
+      println!("Date: {}, Distance: {}", entry.date, entry.distance);
+  }
+
+  let new_year = contain_year(month_sum);
+
+  println!("{:?}", new_year);
+
+  
 
   
 
@@ -215,6 +221,16 @@ fn activity_filter(df: &DataFrame, activity: &str) -> PolarsResult<DataFrame> {
   df.filter(&mask)
 }
 
+fn contain_year(df: &DataFrame) -> PolarsResult<DataFrame> {
+  let activity_column = df.column("Date")?.str()?;
+  let mask = activity_column
+    .into_iter()    
+    .map(|opt_val| opt_val.map(|val| val.contains("2568")))
+    .collect::<BooleanChunked>();
+
+  df.filter(&mask)
+
+}
 
 fn filter_distance(df: &DataFrame, min: f64, max: f64) -> PolarsResult<DataFrame> {
   let distance_column = df.column("Distance(km)")?.f64()?;
@@ -280,8 +296,8 @@ fn dataframe_to_struct_vec(df: &DataFrame) -> PolarsResult<Vec<MonthlyDistance>>
     .into_no_null_iter()
     .zip(distances.into_no_null_iter())
     .map(|(date, distance)| MonthlyDistance {
-        date: date.to_string(),
-        distance,
+      date: date.to_string(),
+      distance,
     })
     .collect();
 
