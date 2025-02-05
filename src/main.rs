@@ -155,6 +155,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .sum()?
     .sort(["Date"], Default::default())?;
 
+    let struct_array = dataframe_to_struct_vec(&month_sum)?;
+    for entry in struct_array {
+        println!("Date: {}, Distance: {}", entry.date, entry.distance);
+    }
+
+  
+
   println!("{:?}", month_sum);
   Ok(())
 }
@@ -258,4 +265,25 @@ fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
     .bitand(distance_column.lt(end_timestamp));
 
   df.filter(&mask)
+}
+
+struct MonthlyDistance {
+  date: String,
+  distance: f64,
+}
+
+fn dataframe_to_struct_vec(df: &DataFrame) -> PolarsResult<Vec<MonthlyDistance>> {
+  let dates = df.column("Date")?.str()?;
+  let distances = df.column("Distance(km)_sum")?.f64()?;
+
+  let struct_vec: Vec<MonthlyDistance> = dates
+    .into_no_null_iter()
+    .zip(distances.into_no_null_iter())
+    .map(|(date, distance)| MonthlyDistance {
+        date: date.to_string(),
+        distance,
+    })
+    .collect();
+
+  Ok(struct_vec)
 }
