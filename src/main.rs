@@ -235,6 +235,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
   println!("running {}", running2024df.height());
   println!("day {}", running2024df.column("Date")?.n_unique()?);
 
+  let max_dis = running2024df
+    .column("Distance(km)")?
+    .f64()?
+    .max() 
+    .unwrap_or(f64::NAN);
+  
+  println!("{}", max_dis);
+
 
   // let mut df = df!(
   //   "Value" => &[10, 25, 45, 55, 75, 90, 120, 150, 175, 200]
