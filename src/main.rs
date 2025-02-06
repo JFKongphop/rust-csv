@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .apply("Date", only_year_month_column)?
     .sort([timestamp_col], Default::default())?;
 
-  println!("{:?}", only_date_df);
+  // println!("{:?}", only_date_df);
 
   let month_sum = &only_date_df
     .group_by(["Date"])?
@@ -229,10 +229,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   // println!("{:?}", g?.select(["Pace(min)", "Date"]));
 
-  let running2024df = start_with_year(&running_df, "2567")?;
+  let only_date_2024 = running_df.apply("Date", only_date_column)?;
+  let running2024df = start_with_year(&only_date_2024, "2567")?;
 
   println!("running {}", running2024df.height());
-  println!("day {}", running2024df);
+  println!("day {}", running2024df.column("Date")?.n_unique()?);
 
 
   // let mut df = df!(
@@ -286,14 +287,18 @@ fn only_year_month_column(date_col: &Column) -> Column {
     .unwrap()
     .into_iter()
     .map(|d| d.and_then(|dd| Some(&dd[..7])))
-    // .map(|d| {
-    //   match d {
-    //     Some(dd) => Some(&dd[..7]),
-    //     _ => Some("")
-    //   }
-    // })
     .collect::<StringChunked>()
     .into_column()
+}
+
+fn only_date_column(date_col: &Column) -> Column {
+  date_col
+  .str()
+  .unwrap()
+  .into_iter()
+  .map(|d| d.and_then(|dd| Some(&dd[..10])))
+  .collect::<StringChunked>()
+  .into_column()
 }
 
 
