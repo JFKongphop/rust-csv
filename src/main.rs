@@ -111,6 +111,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let distance5k = running_df
   .filter(&running_df["Distance(km)"].f64().unwrap().gt(5.1))?; // Use `gt` for comparison
 
+  let gggg = running_df
+    .filter(&running_df
+      .column("Date")?
+      .str()
+      .unwrap()
+      .gt("2567-01-01 00-00-00")
+    )?;
+  // println!("{}", gggg);
+
   // let indoor = running_df.filter(&activity_column.equal("indoor"))?;
   let indoor = activity_filter(&running_df, "indoor");
   let outdoor = activity_filter(&running_df, "outdoor");
@@ -122,11 +131,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
   let distance_400m = filter_distance(&running_df, 0.38, 0.43)?;
   let distance_1k = filter_distance(&running_df, 1.0, 1.1)?;
   let distance_1_2k = filter_distance(&running_df, 1.2, 1.35)?;
-  let distance_2k = filter_distance(&running_df, 2.0, 2.25)?;
-  
+  let distance_2k = filter_distance(&running_df, 2.0, 2.25)?;  
 
   let d = sum_distance(&distance_1k)?;
-  println!("{}", d);
+  // println!("{}", d);
 
   // let col = distance_400m.select(["Distance(km)"]);
 
@@ -137,7 +145,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .ok().expect("Invalid date");
   
   let ts = date.and_utc().timestamp();
-  println!("{}", ts);
+  // println!("{}", ts);
     // .map(|dt| dt.and_utc().timestamp())
 
   let mut jan_2025 = filter_month(&running_df, "2025-01")?;
@@ -147,9 +155,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
   let group = running_df.group_by(["Activity"])?.select(["Distance(km)"]).sum();
 
-  let only_date_df = &running_df
-    .apply("Date", only_date_column)?
+  let only_date_df = running_df.clone()
+    .apply("Date", only_year_month_column)?
     .sort([timestamp_col], Default::default())?;
+
+  println!("{:?}", only_date_df);
 
   let month_sum = &only_date_df
     .group_by(["Date"])?
@@ -163,7 +173,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
   // }
    // Pretty format with indentation
 
-  let only_2024 = contain_year(month_sum, "2567")?;
+  let only_2024 = start_with_year(month_sum, "2567")?;
   let mut full_2024 = fill_missing_months(&only_2024)?;
 
   let full_2024 = full_2024.rename("Distance(km)_sum", "Distance(km)".into())?;
@@ -207,7 +217,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .count()?
     .sort(["Pace Group"], Default::default())?;
 
-  println!("{:?}", jan_2025_pace_count);
+  // println!("{:?}", jan_2025_pace_count);
 
 
   let g = jan_2025_group
@@ -217,7 +227,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
       .equal("Other")
     );
 
-  println!("{:?}", g?.column("Pace(min)"));
+  // println!("{:?}", g?.select(["Pace(min)", "Date"]));
+
+  let running2024df = start_with_year(&running_df, "2567")?;
+
+  println!("running {}", running2024df.height());
+  println!("day {}", running2024df);
+
 
   // let mut df = df!(
   //   "Value" => &[10, 25, 45, 55, 75, 90, 120, 150, 175, 200]
@@ -264,7 +280,7 @@ fn activity_to_type(str_val: &Column) -> Column {
     .collect::<StringChunked>().into_column()
 }
 
-fn only_date_column(date_col: &Column) -> Column {
+fn only_year_month_column(date_col: &Column) -> Column {
   date_col
     .str()
     .unwrap()
@@ -299,7 +315,7 @@ fn activity_filter(df: &DataFrame, activity: &str) -> PolarsResult<DataFrame> {
   df.filter(&mask)
 }
 
-fn contain_year(df: &DataFrame, year: &str) -> PolarsResult<DataFrame> {
+fn start_with_year(df: &DataFrame, year: &str) -> PolarsResult<DataFrame> {
   let activity_column = df.column("Date")?.str()?;
   let mask = activity_column
     .into_iter()    
@@ -348,7 +364,7 @@ fn filter_month(df: &DataFrame, year_month: &str) -> PolarsResult<DataFrame> {
   let start_date = format!("{}-01 00:00:00", year_month);
   let end_date = format!("{}-01 00:00:00", end_month);
 
-  println!("{} {}", start_date,  end_date);
+  // println!("{} {}", start_date,  end_date);
 
   let start_timestamp = convert_date_timestamp(&start_date);
   let end_timestamp = convert_date_timestamp(&end_date);
@@ -438,3 +454,4 @@ fn convert_pace_sec(pace: &Column) -> Column {
     .collect::<UInt64Chunked>()
     .into_column()
 }
+
